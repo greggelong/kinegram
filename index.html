@@ -1,0 +1,1490 @@
+<title>Kinegram Maker (local)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link
+  href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Schibsted+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+  rel="stylesheet">
+<style>
+  /* Layout: slim header with a stripe-pattern rule; two columns on desktop, frames and settings on the left,
+   sticky live preview and export on the right; stacked on phones. Accent is one process-cyan. */
+  :root {
+    --bg: #eceff2;
+    --surface: #ffffff;
+    --fg: #10161d;
+    --muted: #586573;
+    --line: #d3d9e0;
+    --accent: #0a7ea8;
+    --accent-ink: #ffffff;
+    --accent-soft: #dff0f7;
+    --warn: #a85d00;
+    --err: #b3261e;
+    --stage: #080b10;
+    --stage-fg: #cfd8e4;
+    --f-display: 'Bricolage Grotesque', 'Noto Sans SC', system-ui, sans-serif;
+    --f-body: 'Schibsted Grotesk', system-ui, sans-serif;
+    --f-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme:dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1218;
+      --surface: #151c24;
+      --fg: #e6edf5;
+      --muted: #92a1b2;
+      --line: #26313d;
+      --accent: #4fc0e8;
+      --accent-ink: #06141b;
+      --accent-soft: #12303c;
+      --warn: #f0a63a;
+      --err: #ff8a80;
+      --stage: #05070a;
+      --stage-fg: #cfd8e4;
+      color-scheme: dark
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0d1218;
+    --surface: #151c24;
+    --fg: #e6edf5;
+    --muted: #92a1b2;
+    --line: #26313d;
+    --accent: #4fc0e8;
+    --accent-ink: #06141b;
+    --accent-soft: #12303c;
+    --warn: #f0a63a;
+    --err: #ff8a80;
+    --stage: #05070a;
+    --stage-fg: #cfd8e4;
+    color-scheme: dark
+  }
+
+  * {
+    box-sizing: border-box
+  }
+
+  [hidden] {
+    display: none !important
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.55 var(--f-body);
+    margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 56px
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--f-display);
+    margin: 0;
+    line-height: 1.1;
+    text-wrap: balance
+  }
+
+  h1 {
+    font-size: clamp(34px, 5vw, 52px);
+    font-weight: 700;
+    letter-spacing: -.02em
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px
+  }
+
+  p {
+    margin: 0 0 .7em
+  }
+
+  .mono {
+    font-family: var(--f-mono);
+    font-size: 12.5px
+  }
+
+  header.top {
+    padding-block: 32px 22px;
+    display: grid;
+    gap: 12px
+  }
+
+  header.top p {
+    color: var(--muted);
+    max-width: 62ch;
+    margin: 0;
+    font-size: 16px
+  }
+
+  .rule {
+    height: 14px;
+    background: repeating-linear-gradient(to bottom, var(--fg) 0 2px, transparent 2px 6px);
+    opacity: .85;
+    -webkit-mask: linear-gradient(90deg, #000 0, #000 60%, transparent);
+    mask: linear-gradient(90deg, #000 0, #000 60%, transparent)
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+    gap: 28px;
+    align-items: start
+  }
+
+  @media(max-width:900px) {
+    .grid {
+      grid-template-columns: minmax(0, 1fr)
+    }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px;
+    min-width: 0
+  }
+
+  .col {
+    display: grid;
+    gap: 18px;
+    min-width: 0
+  }
+
+  .sticky {
+    position: sticky;
+    top: calc(12px + env(safe-area-inset-top, 0px))
+  }
+
+  @media(max-width:900px) {
+    .sticky {
+      position: static
+    }
+  }
+
+  .drop {
+    border: 2px dashed var(--line);
+    border-radius: 8px;
+    padding: 18px;
+    text-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    display: grid;
+    gap: 6px;
+    justify-items: center
+  }
+
+  .drop.over {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--fg)
+  }
+
+  .drop b {
+    color: var(--fg);
+    font-weight: 600
+  }
+
+  .btn {
+    all: unset;
+    box-sizing: border-box;
+    cursor: pointer;
+    font: 600 14px var(--f-body);
+    padding: 10px 16px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    text-align: center
+  }
+
+  .btn.ghost {
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid var(--line)
+  }
+
+  .btn[disabled] {
+    opacity: .45;
+    cursor: not-allowed
+  }
+
+  .btn:focus-visible,
+  .drop:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  .thumb button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px
+  }
+
+  .row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center
+  }
+
+  .strip {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-block: 10px 4px;
+    margin-top: 12px
+  }
+
+  .thumb {
+    flex: none;
+    width: 76px;
+    display: grid;
+    gap: 4px;
+    justify-items: center
+  }
+
+  .thumb canvas {
+    width: 76px;
+    height: 76px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #888;
+    display: block
+  }
+
+  .thumb .idx {
+    font: 500 11px var(--f-mono);
+    color: var(--muted)
+  }
+
+  .thumb .acts {
+    display: flex;
+    gap: 2px
+  }
+
+  .thumb button {
+    all: unset;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--fg)
+  }
+
+  .thumb button[disabled] {
+    opacity: .3;
+    cursor: default
+  }
+
+  .note {
+    font-size: 13px;
+    color: var(--muted)
+  }
+
+  .tag-ex {
+    font: 500 11px var(--f-mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--warn)
+  }
+
+  .fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px
+  }
+
+  @media(max-width:520px) {
+    .fields {
+      grid-template-columns: minmax(0, 1fr)
+    }
+  }
+
+  .f {
+    display: grid;
+    gap: 5px;
+    min-width: 0
+  }
+
+  .f.full {
+    grid-column: 1/-1
+  }
+
+  .f label,
+  .f .lbl {
+    font: 500 12px var(--f-mono);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 8px
+  }
+
+  .f output {
+    color: var(--fg);
+    text-transform: none;
+    letter-spacing: 0
+  }
+
+  select,
+  input[type=number],
+  input[type=color] {
+    font: 15px var(--f-body);
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    width: 100%;
+    min-width: 0
+  }
+
+  input[type=color] {
+    padding: 2px;
+    height: 38px
+  }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--accent)
+  }
+
+  .seg {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden
+  }
+
+  .seg label {
+    flex: 1;
+    text-transform: none;
+    letter-spacing: 0;
+    font: 500 14px var(--f-body);
+    color: var(--muted);
+    padding: 8px 6px;
+    text-align: center;
+    cursor: pointer;
+    border-right: 1px solid var(--line);
+    justify-content: center
+  }
+
+  .seg label:last-child {
+    border-right: 0
+  }
+
+  .seg input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none
+  }
+
+  .seg label:has(input:checked) {
+    background: var(--accent);
+    color: var(--accent-ink)
+  }
+
+  .seg label:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px
+  }
+
+  .chk {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 14px
+  }
+
+  .chk input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent)
+  }
+
+  .stage {
+    background: var(--stage);
+    border-radius: 8px;
+    padding: 16px;
+    display: grid;
+    justify-items: center;
+    gap: 10px
+  }
+
+  .win {
+    position: relative;
+    background: #000;
+    max-width: 100%
+  }
+
+  .win canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block
+  }
+
+  .cap {
+    font: 11px var(--f-mono);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--stage-fg);
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap
+  }
+
+  .spec {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 14px;
+    font: 13px var(--f-mono);
+    margin: 0
+  }
+
+  .spec dt {
+    color: var(--muted)
+  }
+
+  .spec dd {
+    margin: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums
+  }
+
+  .msg {
+    font-size: 13px;
+    min-height: 1.4em
+  }
+
+  .msg.err {
+    color: var(--err)
+  }
+
+  .msg.warn {
+    color: var(--warn)
+  }
+
+  .steps {
+    margin: 0;
+    padding-left: 1.2em;
+    color: var(--muted);
+    font-size: 14px
+  }
+
+  .steps li {
+    margin-bottom: .35em
+  }
+
+  @media (prefers-reduced-motion:reduce) {
+    * {
+      scroll-behavior: auto
+    }
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js"
+  crossorigin="anonymous"></script>
+<main class="wrap">
+  <header class="top">
+    <div class="rule" aria-hidden="true"></div>
+    <h1>Kinegram Maker</h1>
+    <p>Turn a set of images, photos or a live camera feed into a striped-overlay animation. You get two print files: the
+      interleaved picture and the stripe film. Slide the film over the picture and the frames play.</p>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+
+      <section class="card" aria-labelledby="hFrames">
+        <h2 id="hFrames">1 · Frames</h2>
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add frames">
+          <span><b>Drop images here</b> or click to choose</span>
+          <span class="note">PNG, JPG or WebP. One image per frame, in order. Files are sorted by name (frame2 before
+            frame10).</span>
+        </div>
+        <input id="file" type="file" accept="image/*" multiple hidden>
+        <div class="strip" id="strip" aria-label="Frame order"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost" id="sample" type="button">Use example frames</button>
+          <button class="btn ghost" id="clear" type="button">Clear all</button>
+          <span class="note" id="frameNote"></span>
+        </div>
+        <div class="chk" style="margin-top:12px"><input id="pp" type="checkbox"><label for="pp"
+            style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">Play forward, then
+            backward (ping-pong). Use this when your frames do not loop on their own.</label></div>
+      </section>
+
+      <section class="card" aria-labelledby="hLive">
+        <h2 id="hLive">Live camera (photobooth)</h2>
+        <div class="fields">
+          <div class="f"><label for="camSel">Camera</label><select id="camSel">
+              <option value="user">Front camera</option>
+              <option value="environment">Back camera</option>
+            </select></div>
+          <div class="f"><label for="devSel">Device</label><select id="devSel">
+              <option value="">Choose automatically</option>
+            </select></div>
+          <div class="f"><label for="resSel">Resolution</label><select id="resSel">
+              <option value="640">640 px</option>
+              <option value="1280" selected>1280 px</option>
+              <option value="1920">1920 px</option>
+            </select></div>
+          <div class="f"><span class="lbl">Cutout</span>
+            <div class="chk"><input id="liveAI" type="checkbox"><label for="liveAI"
+                style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">AI person cutout
+                (MediaPipe, needs internet)</label></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn" id="camStart" type="button">Start camera</button>
+          <button class="btn ghost" id="camStop" type="button" disabled>Stop</button>
+          <button class="btn" id="snap" type="button" disabled>Snap one frame</button>
+        </div>
+        <div class="stage" style="margin-top:14px"><canvas id="liveC" width="320" height="240"
+            style="max-width:100%;height:auto;border-radius:4px;background:#000"></canvas></div>
+        <div class="fields" style="margin-top:14px">
+          <div class="f"><label for="bN">Burst frames <output id="bNO">12</output></label><input id="bN" type="range"
+              min="4" max="24" value="12"></div>
+          <div class="f"><label for="bI">Interval <output id="bIO">150 ms</output></label><input id="bI" type="range"
+              min="50" max="1000" step="10" value="150"></div>
+          <div class="f"><label for="bC">Countdown <output id="bCO">3 s</output></label><input id="bC" type="range"
+              min="0" max="10" value="3"></div>
+          <div class="f"><span class="lbl">Burst</span>
+            <div class="chk"><input id="bRep" type="checkbox" checked><label for="bRep"
+                style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">Replace the current
+                frames</label></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn" id="burst" type="button" disabled>Start
+            burst</button></div>
+        <p class="msg" id="liveMsg" role="status" style="margin-top:10px"></p>
+        <p class="note">Camera access needs a secure page. Serve this file from localhost (for example <span
+            class="mono">python3 -m http.server</span>) or from https.</p>
+      </section>
+
+      <section class="card" aria-labelledby="hCap">
+        <h2 id="hCap">Capture with your camera</h2>
+        <p class="note">These buttons use your device's own camera app and work on any phone. For a live preview, use
+          the live camera above.</p>
+        <div class="fields" style="margin-top:14px">
+          <div class="f"><span class="lbl">Camera</span>
+            <div class="seg"><label><input type="radio" name="cam" value="user" checked>Front</label><label><input
+                  type="radio" name="cam" value="environment">Back</label><label><input type="radio" name="cam"
+                  value="any">Ask me</label></div>
+          </div>
+          <div class="f"><span class="lbl">Selfie mirror</span>
+            <div class="chk"><input id="mirror" type="checkbox"><label for="mirror"
+                style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">Flip frames left to
+                right</label></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn" id="recBtn" type="button">Record a clip</button>
+          <button class="btn" id="photoBtn" type="button">Take a photo</button>
+          <button class="btn ghost" id="vidBtn" type="button">Choose a video</button>
+        </div>
+        <input id="vidRec" type="file" accept="video/*" capture="user" hidden>
+        <input id="photoIn" type="file" accept="image/*" capture="user" hidden>
+        <input id="vidIn" type="file" accept="video/*" hidden>
+        <p class="note" style="margin-top:10px">Photos: tap “Take a photo” once per pose, and each one becomes the next
+          frame. Clip: record 2 to 6 seconds, then pick the part you want and how many frames to take from it.</p>
+        <div id="clip" hidden style="margin-top:14px">
+          <video id="vid" muted playsinline preload="auto" controls
+            style="width:100%;max-height:300px;background:#000;border-radius:6px"></video>
+          <div class="fields" style="margin-top:12px">
+            <div class="f"><label for="tStart">Start <output id="tsO"></output></label><input id="tStart" type="range"
+                min="0" max="1" step="0.02" value="0"></div>
+            <div class="f"><label for="tEnd">End <output id="teO"></output></label><input id="tEnd" type="range" min="0"
+                max="1" step="0.02" value="1"></div>
+            <div class="f"><label for="fc">Frames <output id="fcO">12</output></label><input id="fc" type="range"
+                min="4" max="24" value="12"></div>
+            <div class="f"><span class="lbl">Loop</span>
+              <div class="chk"><input id="cyc" type="checkbox"><label for="cyc"
+                  style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">The clip is
+                  exactly one repeat of the movement</label></div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px"><button class="btn" id="extract" type="button">Make frames from this
+              clip</button></div>
+        </div>
+        <p class="msg" id="capMsg" role="status" style="margin-top:10px"></p>
+      </section>
+
+      <section class="card" aria-labelledby="hCut">
+        <h2 id="hCut">Remove the background</h2>
+        <div class="fields">
+          <div class="f full"><label for="cmeth">Method</label>
+            <select id="cmeth">
+              <option value="off">Off, keep the background</option>
+              <option value="key">Colour key (plain wall or cloth)</option>
+              <option value="ref">Empty-scene photo (phone propped up)</option>
+              <option value="median">Automatic from clip (you move around)</option>
+              <option value="ai">AI person cutout (MediaPipe, needs internet)</option>
+            </select>
+            <span class="note" id="cHint"></span>
+          </div>
+          <div class="f cg-key" hidden><span class="lbl">Key colour</span>
+            <div class="row"><span id="keySw"
+                style="width:34px;height:34px;border-radius:6px;border:1px solid var(--line);background:repeating-conic-gradient(#999 0 25%,#ccc 0 50%) 0 0/10px 10px"></span><span
+                class="note">Tap the background in the left picture below</span></div>
+          </div>
+          <div class="f cg-ref" hidden><span class="lbl">Empty scene</span>
+            <div class="row"><button class="btn ghost" id="refBtn" type="button">Take or choose photo</button><span
+                class="note" id="refNote">None yet</span></div><input id="refIn" type="file" accept="image/*"
+              capture="user" hidden>
+          </div>
+          <div class="f cg-tol" id="tolF" hidden><label for="tol">Tolerance <output id="tolO"></output></label><input
+              id="tol" type="range" min="2" max="60" value="16"></div>
+          <div class="f cg-tol" hidden><label for="smo">Smoothing <output id="smoO"></output></label><input id="smo"
+              type="range" min="0" max="8" value="2"></div>
+          <div class="f cg-tol" hidden><label for="grow">Grow or shrink <output id="growO"></output></label><input
+              id="grow" type="range" min="-5" max="5" value="0"></div>
+          <div class="f cg-tol" hidden><span class="lbl">Clean-up</span>
+            <div class="chk"><input id="lg" type="checkbox" checked><label for="lg"
+                style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">Keep only the
+                biggest shape</label></div>
+            <div class="chk"><input id="fh" type="checkbox" checked><label for="fh"
+                style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">Fill holes</label>
+            </div>
+          </div>
+          <div class="f"><label for="look">Look</label>
+            <select id="look">
+              <option value="photo">Photo</option>
+              <option value="bw">High-contrast black and white</option>
+              <option value="sil">Solid silhouette</option>
+            </select>
+          </div>
+          <div class="f cg-thr" hidden><label for="thr">Black and white level <output id="thrO"></output></label><input
+              id="thr" type="range" min="20" max="235" value="120"></div>
+          <div class="f cg-sil" hidden><label for="sil">Silhouette colour</label><input id="sil" type="color"
+              value="#111111"></div>
+        </div>
+        <div class="row" style="margin-top:14px;align-items:flex-start;gap:14px">
+          <div style="display:grid;gap:4px"><span class="note">Original</span><canvas id="cvO"
+              style="width:210px;max-width:100%;border:1px solid var(--line);border-radius:4px;cursor:crosshair;background:#888"></canvas>
+          </div>
+          <div style="display:grid;gap:4px"><span class="note">Result</span><canvas id="cvR"
+              style="width:210px;max-width:100%;border:1px solid var(--line);border-radius:4px;background:#888"></canvas>
+          </div>
+        </div>
+        <div class="f" style="margin-top:10px;max-width:320px"><label for="cvF">Preview frame <output
+              id="cvFO">1</output></label><input id="cvF" type="range" min="1" max="1" value="1"></div>
+        <p class="msg" id="procMsg" role="status" style="margin-top:8px"></p>
+        <p class="note">For the cleanest cut, many phones can lift a person out of a photo themselves (look for the
+          subject cutout in your Photos app). Frames saved as PNG with a transparent background are used exactly as they
+          are.</p>
+      </section>
+
+      <section class="card" aria-labelledby="hSet">
+        <h2 id="hSet">2 · Print settings</h2>
+        <div class="fields">
+          <div class="f"><label for="paper">Paper</label>
+            <select id="paper">
+              <option value="A4">A4 · 210 × 297 mm</option>
+              <option value="A3">A3 · 297 × 420 mm</option>
+              <option value="A5">A5 · 148 × 210 mm</option>
+              <option value="L">Letter · 216 × 279 mm</option>
+              <option value="C">Custom size</option>
+            </select>
+          </div>
+          <div class="f"><span class="lbl">Orientation</span>
+            <div class="seg"><label><input type="radio" name="or" value="p" checked>Portrait</label><label><input
+                  type="radio" name="or" value="l">Landscape</label></div>
+          </div>
+          <div class="f" id="customF" hidden><label for="cw">Width mm</label><input id="cw" type="number" min="60"
+              max="1200" value="210"></div>
+          <div class="f" id="customH" hidden><label for="ch">Height mm</label><input id="ch" type="number" min="60"
+              max="1200" value="297"></div>
+          <div class="f"><label for="dpi">Resolution</label>
+            <select id="dpi">
+              <option value="600" selected>600 dpi (recommended)</option>
+              <option value="300">300 dpi (smaller file)</option>
+            </select>
+          </div>
+          <div class="f"><label for="slice">Slice width</label>
+            <select id="slice">
+              <option value="fine">Fine · 0.21 mm</option>
+              <option value="std" selected>Standard · 0.42 mm</option>
+              <option value="coarse">Coarse · 0.85 mm</option>
+            </select>
+          </div>
+          <div class="f"><span class="lbl">Stripe direction</span>
+            <div class="seg"><label><input type="radio" name="st" value="h" checked>Horizontal</label><label><input
+                  type="radio" name="st" value="v">Vertical</label></div>
+          </div>
+          <div class="f"><span class="lbl">Picture fit</span>
+            <div class="seg"><label><input type="radio" name="fit" value="contain" checked>Contain</label><label><input
+                  type="radio" name="fit" value="cover">Fill</label></div>
+          </div>
+          <div class="f full"><label for="clr">Slit width <output id="clrO"></output></label><input id="clr"
+              type="range" min="1" max="11" value="4">
+            <span class="note">Narrow slits give a sharp but darker picture. Wide slits are brighter but
+              blurrier.</span>
+          </div>
+          <div class="f"><label for="bg">Background</label><input id="bg" type="color" value="#ffffff"></div>
+          <div class="f"><label for="mar">Margin mm</label><input id="mar" type="number" min="0" max="60" value="8">
+          </div>
+          <div class="f full">
+            <div class="chk"><input id="bar" type="checkbox" checked><label for="bar"
+                style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">Add a 100 mm scale
+                bar to both files, to check the printer did not resize them</label></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="hHow">
+        <h2 id="hHow">Printing tips</h2>
+        <ol class="steps">
+          <li>Print both files at 100%. Turn off “fit to page”. Measure the scale bar with a ruler.</li>
+          <li>Print the picture on paper, or on backlit film for a light box.</li>
+          <li>Print the stripe file on transparency film in black only, or have it output on imagesetter film (菲林).</li>
+          <li>Lay the film on the picture, stripe side down. Slide it by one pitch, parallel to the stripes.</li>
+        </ol>
+      </section>
+    </div>
+
+    <div class="col sticky">
+      <section class="card" aria-labelledby="hPrev">
+        <h2 id="hPrev">3 · Preview and export</h2>
+        <div class="stage">
+          <div class="win" id="win"><canvas id="pc"></canvas><canvas id="oc"></canvas></div>
+          <div class="cap"><span id="capL">Add at least two frames</span><span id="capR"></span></div>
+        </div>
+        <div class="fields" style="margin-top:14px">
+          <div class="f full"><span class="lbl">Film motion</span>
+            <div class="seg"><label><input type="radio" name="mo" value="motor" checked>Back and
+                forth</label><label><input type="radio" name="mo" value="saw">One direction</label><label><input
+                  type="radio" name="mo" value="hand">By hand</label></div>
+          </div>
+          <div class="f" id="fpsF"><label for="fps">Speed <output id="fpsO"></output></label><input id="fps"
+              type="range" min="1" max="24" value="8"></div>
+          <div class="f" id="handF" hidden><label for="hand">Film position <output id="handO"></output></label><input
+              id="hand" type="range" min="0" max="1000" value="0"></div>
+          <div class="f">
+            <div class="chk" style="margin-top:22px"><input id="ovOn" type="checkbox" checked><label for="ovOn"
+                style="text-transform:none;letter-spacing:0;font:14px var(--f-body);color:var(--fg)">Stripe film
+                on</label></div>
+          </div>
+        </div>
+        <dl class="spec" id="spec" style="margin-top:16px"></dl>
+        <div class="row" style="margin-top:16px">
+          <button class="btn" id="dlPrint" type="button" disabled>Download picture</button>
+          <button class="btn" id="dlFilm" type="button" disabled>Download stripe film</button>
+        </div>
+        <p class="msg" id="msg" role="status" style="margin-top:10px"></p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+  (function () {
+    var $ = function (i) { return document.getElementById(i) };
+    var PAPER = { A4: [210, 297], A3: [297, 420], A5: [148, 210], L: [215.9, 279.4] };
+    var st = {
+      frames: [], pp: false, paper: 'A4', cw: 210, ch: 297, land: false, dpi: 600, slice: 'std', vert: false, fit: 'contain',
+      clear: 4, clearTouched: false, cam: 'user', mirror: false, medCache: null,
+      cut: { method: 'off', key: null, ref: null, tol: 16, smooth: 2, grow: 0, largest: true, holes: true, look: 'photo', thr: 120, sil: '#111111' }, bg: '#ffffff', margin: 8, bar: true, mode: 'motor', fps: 8, hand: 0, ovOn: true, example: false
+    };
+    var S = Math.max(1, Math.min(3, Math.round(window.devicePixelRatio || 1)));
+    var busy = false;
+
+    /* ---------- frames ---------- */
+    function makeExample() {
+      var out = [], N = 12;
+      for (var f = 0; f < N; f++) {
+        var c = document.createElement('canvas'); c.width = 640; c.height = 900; var x = c.getContext('2d');
+        x.fillStyle = '#14233f'; x.fillRect(0, 0, 640, 900);
+        var p = .5 - .5 * Math.cos(2 * Math.PI * f / N);
+        x.fillStyle = '#e9eef7'; x.beginPath(); x.arc(320, 450, 190 + 40 * p, 0, 7); x.fill();
+        x.fillStyle = '#14233f'; x.beginPath(); x.arc(320, 450, 135 + 40 * p, 0, 7); x.fill();
+        x.save(); x.translate(320, 450); x.rotate(2 * Math.PI / 3 * f / N); x.fillStyle = '#ff7a2f';
+        for (var b = 0; b < 3; b++) { x.rotate(2 * Math.PI / 3); x.beginPath(); x.moveTo(0, 0); x.lineTo(-80, -240); x.lineTo(80, -240); x.closePath(); x.fill() }
+        x.fillStyle = '#e9eef7'; x.beginPath(); x.arc(0, 0, 38, 0, 7); x.fill(); x.restore();
+        out.push({ name: 'example ' + (f + 1), orig: c, src: c });
+      }
+      return out;
+    }
+    function frameCount() { return st.frames.length }
+    function addFiles(files) {
+      var list = Array.prototype.filter.call(files, function (f) { return /^image\//.test(f.type) });
+      if (!list.length) { msg('Those files are not images.', 'err'); return }
+      list.sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }) });
+      if (st.example) { st.frames = []; st.example = false }
+      var room = 48 - st.frames.length;
+      if (list.length > room) { msg('A kinegram can hold at most 48 frames. Extra files were skipped.', 'warn'); list = list.slice(0, Math.max(room, 0)) }
+      var jobs = list.map(function (f) { return createImageBitmap(f).then(function (b) { var c = toCanvas(b, 2400); if (b.close) b.close(); return { name: f.name, orig: c, src: c } }).catch(function () { return null }) });
+      Promise.all(jobs).then(function (r) {
+        var bad = 0; r.forEach(function (x) { if (x) st.frames.push(x); else bad++ });
+        if (bad) msg(bad + ' file(s) could not be read as images.', 'warn');
+        framesChanged();
+      });
+    }
+    function framesChanged() {
+      var n = effN();
+      var cl = $('clr'); cl.max = Math.max(1, n - 1);
+      if (!st.clearTouched || st.clear > n - 1) st.clear = Math.max(1, Math.min(n - 1, Math.round(n / 3)));
+      cl.value = st.clear;
+      renderStrip(); refresh(); drawCut(); scheduleProcess();
+    }
+    function effN() { var n = frameCount(); return n < 2 ? n : (st.pp ? Math.max(2, 2 * n - 2) : n) }
+    function renderStrip() {
+      var strip = $('strip'); strip.innerHTML = '';
+      st.frames.forEach(function (fr, i) {
+        var d = document.createElement('div'); d.className = 'thumb';
+        var c = document.createElement('canvas'); c.width = 152; c.height = 152;
+        var x = c.getContext('2d'); x.fillStyle = '#777'; x.fillRect(0, 0, 152, 152);
+        var s = Math.min(152 / fr.src.width, 152 / fr.src.height), w = fr.src.width * s, h = fr.src.height * s;
+        x.drawImage(fr.src, (152 - w) / 2, (152 - h) / 2, w, h);
+        c.title = fr.name; d.appendChild(c);
+        var ix = document.createElement('span'); ix.className = 'idx'; ix.textContent = String(i + 1); d.appendChild(ix);
+        var a = document.createElement('div'); a.className = 'acts';
+        [['◀', 'Move earlier', -1], ['▶', 'Move later', 1], ['✕', 'Remove', 0]].forEach(function (b) {
+          var btn = document.createElement('button'); btn.type = 'button'; btn.textContent = b[0]; btn.title = b[1]; btn.setAttribute('aria-label', b[1] + ' frame ' + (i + 1));
+          if (b[2] === -1 && i === 0) btn.disabled = true; if (b[2] === 1 && i === st.frames.length - 1) btn.disabled = true;
+          btn.addEventListener('click', function () {
+            if (b[2] === 0) st.frames.splice(i, 1);
+            else { var j = i + b[2], t = st.frames[i]; st.frames[i] = st.frames[j]; st.frames[j] = t }
+            if (st.example && b[2] === 0) st.example = false;
+            framesChanged();
+          }); a.appendChild(btn);
+        });
+        d.appendChild(a); strip.appendChild(d);
+      });
+      $('frameNote').innerHTML = st.example ? '<span class="tag-ex">Example frames</span> replace them with your own' :
+        (frameCount() ? frameCount() + ' frame' + (frameCount() > 1 ? 's' : '') : 'No frames yet');
+    }
+
+    /* ---------- geometry ---------- */
+    function geom() {
+      var n = frameCount(); if (n < 2) return null;
+      var seq = [], i; for (i = 0; i < n; i++)seq.push(i);
+      if (st.pp) for (i = n - 2; i >= 1; i--)seq.push(i);
+      var N = seq.length, base = { fine: 5, std: 10, coarse: 20 }[st.slice];
+      var u = Math.max(1, Math.round(base * st.dpi / 600)), pitch = N * u, mmPx = st.dpi / 25.4;
+      var pw, ph; if (st.paper === 'C') { pw = st.cw; ph = st.ch } else { pw = PAPER[st.paper][0]; ph = PAPER[st.paper][1] }
+      if (pw > ph) { var t = pw; pw = ph; ph = t }
+      if (st.land) { var t2 = pw; pw = ph; ph = t2 }
+      var pxW = Math.round(pw * mmPx), pxH = Math.round(ph * mmPx), sheetW = pxW, sheetH = pxH;
+      if (st.vert) sheetW = Math.floor(pxW / pitch) * pitch; else sheetH = Math.floor(pxH / pitch) * pitch;
+      var m = Math.max(1, Math.ceil(st.margin * mmPx / pitch)) * pitch;
+      var iw = sheetW - 2 * m, ih = sheetH - 2 * m;
+      return {
+        n: n, seq: seq, N: N, u: u, pitch: pitch, mmPx: mmPx, sheetW: sheetW, sheetH: sheetH, m: m, iw: iw, ih: ih, vert: st.vert,
+        clear: Math.min(st.clear, N - 1), pw: pw, ph: ph, ok: iw >= pitch * 2 && ih >= pitch * 2 && sheetW > 0 && sheetH > 0, mp: sheetW * sheetH / 1e6
+      };
+    }
+
+    /* ---------- drawing ---------- */
+    function drawFit(t, src, iw, ih) {
+      var sw = src.width, sh = src.height, s = st.fit === 'cover' ? Math.max(iw / sw, ih / sh) : Math.min(iw / sw, ih / sh);
+      var w = sw * s, h = sh * s; t.imageSmoothingEnabled = true; t.imageSmoothingQuality = 'high';
+      t.drawImage(src, (iw - w) / 2, (ih - h) / 2, w, h);
+    }
+    function interlace(out, ox, oy, iw, ih, u, g) {
+      var tmp = document.createElement('canvas'); tmp.width = iw; tmp.height = ih;
+      var t = tmp.getContext('2d'), total = (g.vert ? iw : ih) / u, f, r;
+      for (f = 0; f < g.N; f++) {
+        t.fillStyle = st.bg; t.fillRect(0, 0, iw, ih);
+        drawFit(t, st.frames[g.seq[f]].src, iw, ih);
+        for (r = f; r < total; r += g.N) {
+          if (g.vert) out.drawImage(tmp, r * u, 0, u, ih, ox + r * u, oy, u, ih);
+          else out.drawImage(tmp, 0, r * u, iw, u, ox, oy + r * u, iw, u);
+        }
+      }
+    }
+    function stripes(ctx, W, H, u, N, clear, off, vert, color) {
+      ctx.fillStyle = color; var pitch = N * u, p = off * u + clear * u - pitch;
+      if (!vert) { for (; p < H; p += pitch)ctx.fillRect(0, p, W, (N - clear) * u) }
+      else { for (; p < W; p += pitch)ctx.fillRect(p, 0, (N - clear) * u, H) }
+    }
+    function bar(ctx, g, color) {
+      if (!st.bar) return false;
+      var len = Math.round(100 * g.mmPx), cp = g.clear * g.u, bh = Math.max(2, Math.round(cp * .4)), o = Math.round((cp - bh) / 2);
+      ctx.fillStyle = color;
+      if (!g.vert) { if (g.m + len > g.sheetW - g.m) return false; ctx.fillRect(g.m, o, len, bh) }
+      else { if (g.m + len > g.sheetH - g.m) return false; ctx.fillRect(o, g.m, bh, len) }
+      return true;
+    }
+
+    /* ---------- preview ---------- */
+    var pc = $('pc'), oc = $('oc'), pg = null, pv = null;
+    function buildPreview() {
+      var g = geom(), win = $('win'); pg = g;
+      if (!g || !g.ok) {
+        pv = null; pc.width = oc.width = 2; win.style.width = '240px'; win.style.height = '320px';
+        pc.getContext('2d').clearRect(0, 0, 2, 2); return
+      }
+      var avail = Math.max(200, Math.min(440, $('win').parentNode.clientWidth - 32 || 440));
+      var a = g.iw / g.ih, w, h;
+      if (a <= 1) { h = avail; w = avail * a } else { w = avail; h = avail / a }
+      var wU, hU;
+      if (g.vert) { wU = g.N * Math.max(1, Math.round(w / g.N)); hU = Math.round(h) }
+      else { hU = g.N * Math.max(1, Math.round(h / g.N)); wU = Math.round(w) }
+      win.style.width = wU + 'px'; win.style.height = hU + 'px';
+      pc.width = oc.width = wU * S; pc.height = oc.height = hU * S;
+      var x = pc.getContext('2d'); x.fillStyle = st.bg; x.fillRect(0, 0, pc.width, pc.height);
+      var g2 = { N: g.N, seq: g.seq, vert: g.vert };
+      interlace(x, 0, 0, wU * S, hU * S, S, g2);
+      pv = { wU: wU, hU: hU };
+    }
+    function offsetNow(t) {
+      var N = pg.N;
+      if (st.mode === 'hand') return st.hand / 1000 * N % N;
+      if (st.mode === 'saw') return (st.fps * t / 1000) % N;
+      var w = Math.PI * st.fps / N; return N / 2 * (1 - Math.cos(w * t / 1000));
+    }
+    var t0 = performance.now(), lastDraw = -1;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) st.mode = 'hand';
+    function frame(now) {
+      if (pg && pg.ok && pv) {
+        var off = offsetNow(now - t0);
+        var ctx = oc.getContext('2d'); ctx.clearRect(0, 0, oc.width, oc.height);
+        if (st.ovOn) stripes(ctx, oc.width, oc.height, S, pg.N, pg.clear, off, pg.vert, 'rgba(5,7,12,.95)');
+        var a = Math.floor(off) % pg.N, b = (a + pg.clear - 1) % pg.N;
+        var fa = pg.seq[a], fb = pg.seq[b];
+        $('capR').textContent = st.ovOn ? ('frames ' + (fa + 1) + (pg.clear > 1 ? '–' + (fb + 1) : '') + ' of ' + pg.n) : 'raw print';
+        if (st.mode === 'hand') $('handO').textContent = off.toFixed(1) + ' / ' + pg.N;
+      }
+      requestAnimationFrame(frame);
+    }
+
+    /* ---------- readout ---------- */
+    function mm(px, g) { return (px / g.mmPx) }
+    function refresh() {
+      buildPreview();
+      var g = pg, spec = $('spec'), ok = g && g.ok;
+      $('clrO').textContent = g ? (g.clear + ' of ' + g.N + ' slices open') : '';
+      $('fpsO').textContent = st.fps + ' fps';
+      $('dlPrint').disabled = !ok || busy; $('dlFilm').disabled = !ok || busy;
+      var m = $('msg'); m.className = 'msg'; m.textContent = '';
+      if (!g) { spec.innerHTML = ''; $('capL').textContent = 'Add at least two frames'; $('capR').textContent = ''; return }
+      if (!g.ok) { spec.innerHTML = ''; msg('The paper is too small for these settings. Use a larger paper, a thinner slice, or fewer frames.', 'err'); $('capL').textContent = ''; return }
+      $('capL').textContent = g.N + ' frames · ' + (g.vert ? 'vertical' : 'horizontal') + ' stripes';
+      var rows = [['Sheet', g.pw.toFixed(0) + ' × ' + g.ph.toFixed(0) + ' mm (' + g.sheetW + ' × ' + g.sheetH + ' px)'],
+      ['Picture area', mm(g.iw, g) + 0 > 0 ? mm(g.iw, g).toFixed(0) + ' × ' + mm(g.ih, g).toFixed(0) + ' mm' : ''],
+      ['Slice', mm(g.u, g).toFixed(3) + ' mm (' + g.u + ' px)'],
+      ['Stripe pitch', mm(g.pitch, g).toFixed(2) + ' mm = film travel'],
+      ['Open slit / solid', mm(g.clear * g.u, g).toFixed(2) + ' / ' + mm((g.N - g.clear) * g.u, g).toFixed(2) + ' mm'],
+      ['Check', '20 pitches = ' + (20 * mm(g.pitch, g)).toFixed(1) + ' mm'],
+      ['File size', 'about ' + g.mp.toFixed(0) + ' megapixels each']];
+      spec.innerHTML = rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>' }).join('');
+      if (g.mp > 150) { msg('This is a very large image. If the download fails, choose 300 dpi or a smaller paper.', 'warn') }
+      else if (st.bar && !bar(document.createElement('canvas').getContext('2d'), g, '#000')) { msg('The paper is too small for the 100 mm scale bar, so it will be left out.', 'warn') }
+    }
+    function msg(t, c) { var m = $('msg'); m.className = 'msg' + (c ? ' ' + c : ''); m.textContent = t }
+
+    /* ---------- export ---------- */
+    var crcT = (function () { var t = [], n, k, c; for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++)c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0 } return t })();
+    function crc32(b) { var c = 0xFFFFFFFF, i; for (i = 0; i < b.length; i++)c = crcT[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0 }
+    function withDpi(blob, dpi) {
+      return blob.arrayBuffer().then(function (ab) {
+        var buf = new Uint8Array(ab), ppm = Math.round(dpi / 0.0254), ch = new Uint8Array(21), dv = new DataView(ch.buffer);
+        dv.setUint32(0, 9); ch.set([0x70, 0x48, 0x59, 0x73], 4); dv.setUint32(8, ppm); dv.setUint32(12, ppm); ch[16] = 1;
+        dv.setUint32(17, crc32(ch.subarray(4, 17)));
+        var out = new Uint8Array(buf.length + 21); out.set(buf.subarray(0, 33)); out.set(ch, 33); out.set(buf.subarray(33), 54);
+        return new Blob([out], { type: 'image/png' });
+      });
+    }
+    function deliver(blob, name) {
+      var p;
+      try { p = (window.claude && window.claude.use) ? window.claude.use('downloads') : Promise.resolve(null) } catch (e) { p = Promise.resolve(null) }
+      return p.catch(function () { return null }).then(function (dl) {
+        if (dl) {
+          return dl.save({ filename: name, data: blob }).then(function () { msg('Saved ' + name, '') }, function (e) {
+            msg(e && e.code === 'declined' ? 'Save cancelled.' : 'Could not save the file (' + ((e && (e.message || e.code)) || 'unknown') + ').', 'err')
+          });
+        }
+        var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url) }, 60000); msg('Saved ' + name, '');
+      });
+    }
+    function exportFile(kind) {
+      var g = geom(); if (!g || !g.ok || busy) return;
+      busy = true; $('dlPrint').disabled = $('dlFilm').disabled = true; msg('Rendering ' + g.sheetW + ' × ' + g.sheetH + ' px…', '');
+      setTimeout(function () {
+        var c;
+        try {
+          c = document.createElement('canvas'); c.width = g.sheetW; c.height = g.sheetH;
+          var x = c.getContext('2d'); if (!x) throw new Error('canvas');
+          x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+          if (kind === 'print') { interlace(x, g.m, g.m, g.iw, g.ih, g.u, g); bar(x, g, '#000') }
+          else { stripes(x, c.width, c.height, g.u, g.N, g.clear, 0, g.vert, '#000'); bar(x, g, '#000') }
+        } catch (e) { busy = false; refresh(); msg('This device could not make an image that large. Choose 300 dpi or a smaller paper.', 'err'); return }
+        c.toBlob(function (b) {
+          if (!b) { busy = false; refresh(); msg('This device could not make an image that large. Choose 300 dpi or a smaller paper.', 'err'); return }
+          withDpi(b, st.dpi).then(function (nb) {
+            var nm = 'kinegram_' + (kind === 'print' ? 'picture' : 'stripe_film') + '_' + g.N + 'frames_' + st.dpi + 'dpi.png';
+            return deliver(nb, nm)
+          }).then(function () { busy = false; var k = geom(); $('dlPrint').disabled = $('dlFilm').disabled = !(k && k.ok) });
+        }, 'image/png');
+      }, 40);
+    }
+
+    /* ---------- capture and cutout ---------- */
+    var uidc = 0, procTok = 0, procT = null;
+    function capMsg(t, c) { var m = $('capMsg'); m.className = 'msg' + (c ? ' ' + c : ''); m.textContent = t }
+    function procMsg(t, c) { var m = $('procMsg'); m.className = 'msg' + (c ? ' ' + c : ''); m.textContent = t }
+    function toCanvas(src, maxLong) {
+      var sw = src.videoWidth || src.width, sh = src.videoHeight || src.height;
+      if (!sw || !sh) throw new Error('empty image');
+      var s = Math.min(1, maxLong / Math.max(sw, sh)), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(sw * s)); c.height = Math.max(1, Math.round(sh * s));
+      var x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, c.width, c.height); return c;
+    }
+    function pushFrame(c, name) {
+      if (st.example) { st.frames = []; st.example = false }
+      if (st.frames.length >= 48) { capMsg('A kinegram can hold at most 48 frames.', 'warn'); return false }
+      st.frames.push({ name: name, orig: c, src: c }); return true;
+    }
+    function updateCapture() {
+      ['vidRec', 'photoIn', 'refIn'].forEach(function (id) { var e = $(id); if (st.cam === 'any') e.removeAttribute('capture'); else e.setAttribute('capture', st.cam) });
+    }
+    var vidUrl = null;
+    function loadVideo(file) {
+      var v = $('vid'); if (vidUrl) URL.revokeObjectURL(vidUrl);
+      vidUrl = URL.createObjectURL(file); var tried = false;
+      v.onerror = function () {
+        if (!tried) {
+          tried = true; var fr = new FileReader();
+          fr.onload = function () { v.src = fr.result };
+          fr.onerror = function () { capMsg('This view could not open the video. Use “Take a photo” for each pose instead.', 'err') };
+          fr.readAsDataURL(file)
+        }
+        else capMsg('This view could not play the video. Use “Take a photo” for each pose instead.', 'err');
+      };
+      v.onloadedmetadata = function () {
+        if (!isFinite(v.duration)) { v.currentTime = 1e7; v.ontimeupdate = function () { v.ontimeupdate = null; v.currentTime = 0; setupClip() }; return }
+        setupClip();
+      };
+      v.src = vidUrl; $('clip').hidden = false; capMsg('Loading video…');
+    }
+    function setupClip() {
+      var v = $('vid'), d = v.duration; if (!isFinite(d) || d <= 0) return;
+      ['tStart', 'tEnd'].forEach(function (id) { var e = $(id); e.max = d.toFixed(2); e.step = '0.02' });
+      $('tStart').value = 0; $('tEnd').value = d.toFixed(2); updClip();
+      capMsg('Video ready (' + d.toFixed(1) + ' s). Choose the part to use, then make frames.');
+    }
+    function updClip() { $('tsO').textContent = (+$('tStart').value).toFixed(2) + ' s'; $('teO').textContent = (+$('tEnd').value).toFixed(2) + ' s'; $('fcO').textContent = $('fc').value }
+    function seek(v, t) {
+      return new Promise(function (res) {
+        var done = false; function fin() { if (done) return; done = true; v.removeEventListener('seeked', fin); res() }
+        v.addEventListener('seeked', fin); v.currentTime = Math.min(Math.max(0, t), Math.max(0, v.duration - 0.02)); setTimeout(fin, 3000);
+      });
+    }
+    function extractFrames() {
+      var v = $('vid'), n = +$('fc').value, a = +$('tStart').value, b = +$('tEnd').value, cyc = $('cyc').checked;
+      if (!(b > a)) { capMsg('The end must come after the start.', 'err'); return }
+      var out = [], i = 0; $('extract').disabled = true;
+      (function step() {
+        if (i >= n) {
+          st.frames = out; st.example = false; $('extract').disabled = false;
+          capMsg(n + ' frames made. Next, remove the background if you want, then download.', ''); framesChanged(); return
+        }
+        var t = a + (b - a) * (n === 1 ? 0 : (cyc ? i / n : i / (n - 1)));
+        capMsg('Taking frame ' + (i + 1) + ' of ' + n + '…', '');
+        seek(v, t).then(function () {
+          var c = toCanvas(v, 1280); if (!c.width || !c.height) { throw new Error('video') }
+          out.push({ name: 'clip ' + (i + 1), orig: c, src: c }); i++; setTimeout(step, 0);
+        }).catch(function () { $('extract').disabled = false; capMsg('Could not read frames from this video.', 'err') });
+      })();
+    }
+    function needsProc() { var c = st.cut; return st.mirror || c.method !== 'off' || c.look !== 'photo' }
+    function workSize(fr) { var s = Math.min(1, 960 / Math.max(fr.orig.width, fr.orig.height)); return [Math.max(1, Math.round(fr.orig.width * s)), Math.max(1, Math.round(fr.orig.height * s))] }
+    function flipDraw(src, w, h, flip) {
+      var c = document.createElement('canvas'); c.width = w; c.height = h; var x = c.getContext('2d', { willReadFrequently: true });
+      if (flip) { x.translate(w, 0); x.scale(-1, 1) } x.drawImage(src, 0, 0, w, h); return c;
+    }
+    function baseOf(fr, w, h) { return flipDraw(fr.orig, w, h, st.mirror) }
+    function boxBlurF(a, w, h, r) {
+      if (r < 1) return; var t = new Float32Array(a.length), x, y, k, s, win = 2 * r + 1, o;
+      for (y = 0; y < h; y++) {
+        o = y * w; s = 0; for (k = -r; k <= r; k++)s += a[o + Math.min(w - 1, Math.max(0, k))];
+        for (x = 0; x < w; x++) { t[o + x] = s / win; s += a[o + Math.min(w - 1, x + r + 1)] - a[o + Math.max(0, x - r)] }
+      }
+      for (x = 0; x < w; x++) {
+        s = 0; for (k = -r; k <= r; k++)s += t[Math.min(h - 1, Math.max(0, k)) * w + x];
+        for (y = 0; y < h; y++) { a[y * w + x] = s / win; s += t[Math.min(h - 1, y + r + 1) * w + x] - t[Math.max(0, y - r) * w + x] }
+      }
+    }
+    function keepLargest(b, w, h) {
+      var n = w * h, lab = new Int32Array(n), stk = new Int32Array(n), best = 0, bestN = 0, cur = 0, i, p, x, y, sp, cnt;
+      for (i = 0; i < n; i++) {
+        if (b[i] && !lab[i]) {
+          cur++; sp = 0; cnt = 0; stk[sp++] = i; lab[i] = cur;
+          while (sp) {
+            p = stk[--sp]; cnt++; x = p % w; y = (p - x) / w;
+            if (x > 0 && b[p - 1] && !lab[p - 1]) { lab[p - 1] = cur; stk[sp++] = p - 1 }
+            if (x < w - 1 && b[p + 1] && !lab[p + 1]) { lab[p + 1] = cur; stk[sp++] = p + 1 }
+            if (y > 0 && b[p - w] && !lab[p - w]) { lab[p - w] = cur; stk[sp++] = p - w }
+            if (y < h - 1 && b[p + w] && !lab[p + w]) { lab[p + w] = cur; stk[sp++] = p + w }
+          }
+          if (cnt > bestN) { bestN = cnt; best = cur }
+        }
+      }
+      for (i = 0; i < n; i++)if (b[i] && lab[i] !== best) b[i] = 0;
+    }
+    function fillHoles(b, w, h) {
+      var n = w * h, seen = new Uint8Array(n), stk = new Int32Array(n), sp = 0, i, p, x, y;
+      function add(q) { if (!b[q] && !seen[q]) { seen[q] = 1; stk[sp++] = q } }
+      for (x = 0; x < w; x++) { add(x); add((h - 1) * w + x) }
+      for (y = 0; y < h; y++) { add(y * w); add(y * w + w - 1) }
+      while (sp) {
+        p = stk[--sp]; x = p % w; y = (p - x) / w;
+        if (x > 0) add(p - 1); if (x < w - 1) add(p + 1); if (y > 0) add(p - w); if (y < h - 1) add(p + w)
+      }
+      for (i = 0; i < n; i++)if (!b[i] && !seen[i]) b[i] = 1;
+    }
+    function morph(b, w, h, g) {
+      var dil = g > 0, it = Math.abs(g), t = new Uint8Array(b.length), q, x, y, i, v;
+      for (q = 0; q < it; q++) {
+        for (y = 0; y < h; y++)for (x = 0; x < w; x++) { i = y * w + x; v = b[i]; var l = x > 0 ? b[i - 1] : v, r = x < w - 1 ? b[i + 1] : v; t[i] = dil ? (v | l | r) : (v & l & r) }
+        for (y = 0; y < h; y++)for (x = 0; x < w; x++) { i = y * w + x; v = t[i]; var u = y > 0 ? t[i - w] : v, d = y < h - 1 ? t[i + w] : v; b[i] = dil ? (v | u | d) : (v & u & d) }
+      }
+    }
+    function medianBg(fr) {
+      var wh = workSize(fr[0]), w = wh[0], h = wh[1], K = Math.min(fr.length, 15), n = w * h, idx = [], i, j, c, k, v;
+      for (i = 0; i < K; i++)idx.push(Math.round(i * (fr.length - 1) / Math.max(1, K - 1)));
+      var data = idx.map(function (q) { return baseOf(fr[q], w, h).getContext('2d').getImageData(0, 0, w, h).data });
+      var out = document.createElement('canvas'); out.width = w; out.height = h; var ox = out.getContext('2d'), oi = ox.createImageData(w, h), od = oi.data, vals = new Uint8Array(K);
+      for (i = 0; i < n; i++) {
+        for (c = 0; c < 3; c++) {
+          for (j = 0; j < K; j++) { v = data[j][i * 4 + c]; k = j - 1; while (k >= 0 && vals[k] > v) { vals[k + 1] = vals[k]; k-- } vals[k + 1] = v }
+          od[i * 4 + c] = vals[K >> 1];
+        }
+        od[i * 4 + 3] = 255;
+      }
+      ox.putImageData(oi, 0, 0); return { canvas: out, pre: true };
+    }
+    function hexRgb(s) { var n = parseInt(s.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255] }
+    function processFrame(fr, ctx) {
+      var cut = st.cut, wh = workSize(fr), w = wh[0], h = wh[1], n = w * h, bc = baseOf(fr, w, h), bx = bc.getContext('2d'), img = bx.getImageData(0, 0, w, h), d = img.data, i, i4;
+      var a = new Float32Array(n), K3 = 100 / 441.67, haveBg = true;
+      if (cut.method === 'off') { for (i = 0; i < n; i++)a[i] = d[i * 4 + 3] / 255 }
+      else if ((cut.method === 'key' && !cut.key) || (cut.method === 'ref' && !ctx.bg)) { a.fill(1) }
+      else {
+        var dist = new Float32Array(n), thrV = cut.tol;
+        if (cut.method === 'ai') { thrV = 50; for (i = 0; i < n; i++)dist[i] = (fr._mask && fr._mask.length === n ? fr._mask[i] : 1) * 100 }
+        else if (cut.method === 'key') {
+          var kr = cut.key[0], kg = cut.key[1], kb = cut.key[2];
+          for (i = 0; i < n; i++) { i4 = i * 4; var er = d[i4] - kr, eg = d[i4 + 1] - kg, eb = d[i4 + 2] - kb; dist[i] = Math.sqrt(er * er + eg * eg + eb * eb) * K3 }
+        } else {
+          var bgd = flipDraw(ctx.bg.canvas, w, h, !ctx.bg.pre && st.mirror).getContext('2d').getImageData(0, 0, w, h).data, g0 = 1, g1 = 1, g2 = 1;
+          if (cut.method === 'ref') {
+            var ring = Math.max(4, Math.round(.04 * Math.min(w, h))), sf = [0, 0, 0], sb = [0, 0, 0], x, y;
+            for (y = 0; y < h; y++)for (x = 0; x < w; x++) {
+              if (x < ring || x >= w - ring || y < ring || y >= h - ring) {
+                i4 = (y * w + x) * 4;
+                sf[0] += d[i4]; sf[1] += d[i4 + 1]; sf[2] += d[i4 + 2]; sb[0] += bgd[i4]; sb[1] += bgd[i4 + 1]; sb[2] += bgd[i4 + 2]
+              }
+            }
+            var cl = function (q) { return Math.min(1.6, Math.max(.6, q)) };
+            g0 = cl(sf[0] / (sb[0] || 1)); g1 = cl(sf[1] / (sb[1] || 1)); g2 = cl(sf[2] / (sb[2] || 1));
+          }
+          for (i = 0; i < n; i++) { i4 = i * 4; var fr_ = d[i4] - bgd[i4] * g0, fg = d[i4 + 1] - bgd[i4 + 1] * g1, fb = d[i4 + 2] - bgd[i4 + 2] * g2; dist[i] = Math.sqrt(fr_ * fr_ + fg * fg + fb * fb) * K3 }
+        }
+        if (cut.method !== 'ai') boxBlurF(dist, w, h, 2);
+        var bin = new Uint8Array(n); for (i = 0; i < n; i++)bin[i] = dist[i] >= thrV ? 1 : 0;
+        if (cut.largest) keepLargest(bin, w, h);
+        if (cut.holes) fillHoles(bin, w, h);
+        if (cut.grow) morph(bin, w, h, cut.grow);
+        if (cut.smooth > 0) {
+          for (i = 0; i < n; i++)a[i] = bin[i]; boxBlurF(a, w, h, cut.smooth);
+          for (i = 0; i < n; i++) { var t = (a[i] - .3) / .4; t = t < 0 ? 0 : t > 1 ? 1 : t; a[i] = t * t * (3 - 2 * t) }
+        } else { for (i = 0; i < n; i++)a[i] = bin[i] }
+      }
+      var sc = hexRgb(cut.sil), thr = cut.thr;
+      for (i = 0; i < n; i++) {
+        i4 = i * 4;
+        if (cut.look === 'bw') { var lum = .299 * d[i4] + .587 * d[i4 + 1] + .114 * d[i4 + 2], vv = lum >= thr ? 255 : 0; d[i4] = d[i4 + 1] = d[i4 + 2] = vv }
+        else if (cut.look === 'sil') { d[i4] = sc[0]; d[i4 + 1] = sc[1]; d[i4 + 2] = sc[2] }
+        d[i4 + 3] = Math.round(a[i] * 255);
+      }
+      bx.putImageData(img, 0, 0); return bc;
+    }
+    function scheduleProcess() { clearTimeout(procT); procT = setTimeout(runProcess, 140) }
+    function runProcess() {
+      var tok = ++procTok, fr = st.frames;
+      if (!fr.length) { drawCut(); return }
+      if (!needsProc()) { fr.forEach(function (f) { f.src = f.orig }); renderStrip(); refresh(); drawCut(); procMsg(''); return }
+      procMsg('Processing…');
+      var ctx = { bg: null }, i = 0;
+      function go() {
+        (function step() {
+          if (tok !== procTok) return;
+          if (i >= fr.length) { renderStrip(); refresh(); drawCut(); procMsg(''); return }
+          try { fr[i].src = processFrame(fr[i], ctx) } catch (e) { procMsg('Cutout failed: ' + e.message, 'err'); return }
+          i++; procMsg('Processing ' + i + ' of ' + fr.length + '…'); setTimeout(step, 0);
+        })();
+      }
+      try {
+        if (st.cut.method === 'median') {
+          fr.forEach(function (f) { f.uid = f.uid || ++uidc });
+          var key = fr.map(function (f) { return f.uid }).join(',') + '|' + st.mirror;
+          if (!st.medCache || st.medCache.key !== key) st.medCache = { key: key, bg: medianBg(fr) };
+          ctx.bg = st.medCache.bg;
+        } else if (st.cut.method === 'ref' && st.cut.ref) ctx.bg = { canvas: st.cut.ref, pre: false };
+      } catch (e) { procMsg('Cutout failed: ' + e.message, 'err'); return }
+      if (st.cut.method === 'ai') {
+        procMsg('Loading the AI model…');
+        computeMasks(fr, tok).then(function (ok) { if (ok && tok === procTok) go() })
+          .catch(function (e) { procMsg('AI cutout failed: ' + (e.message || e), 'err') });
+        return;
+      }
+      go();
+    }
+    function drawCut() {
+      var fr = st.frames, n = fr.length, cvO = $('cvO'), cvR = $('cvR'), sl = $('cvF');
+      sl.max = Math.max(1, n); if (+sl.value > n) sl.value = Math.max(1, n); $('cvFO').textContent = sl.value;
+      var ox = cvO.getContext('2d', { willReadFrequently: true }), rx = cvR.getContext('2d');
+      if (!n) { cvO.width = cvR.width = 210; cvO.height = cvR.height = 280; ox.clearRect(0, 0, 210, 280); rx.clearRect(0, 0, 210, 280); return }
+      var f = fr[Math.min(n, Math.max(1, +sl.value)) - 1], s = Math.min(420 / f.orig.width, 420 / f.orig.height), w = Math.round(f.orig.width * s), h = Math.round(f.orig.height * s);
+      cvO.width = cvR.width = w; cvO.height = cvR.height = h;
+      ox.save(); if (st.mirror) { ox.translate(w, 0); ox.scale(-1, 1) } ox.drawImage(f.orig, 0, 0, w, h); ox.restore();
+      var x, y; for (y = 0; y < h; y += 10)for (x = 0; x < w; x += 10) { rx.fillStyle = ((x + y) / 10) % 2 ? '#bbb' : '#888'; rx.fillRect(x, y, 10, 10) }
+      rx.drawImage(f.src, 0, 0, w, h);
+    }
+    function syncCut() {
+      var c = st.cut, m = c.method;
+      document.querySelectorAll('.cg-key').forEach(function (e) { e.hidden = m !== 'key' });
+      document.querySelectorAll('.cg-ref').forEach(function (e) { e.hidden = m !== 'ref' });
+      document.querySelectorAll('.cg-tol').forEach(function (e) { e.hidden = m === 'off' });
+      document.querySelectorAll('.cg-thr').forEach(function (e) { e.hidden = c.look !== 'bw' });
+      document.querySelectorAll('.cg-sil').forEach(function (e) { e.hidden = c.look !== 'sil' });
+      $('tolF').hidden = m === 'off' || m === 'ai';
+      $('tolO').textContent = c.tol; $('smoO').textContent = c.smooth + ' px'; $('growO').textContent = c.grow; $('thrO').textContent = c.thr;
+      $('cHint').textContent = {
+        off: 'Keeps the whole picture.',
+        key: 'Tap the background in the left picture below to pick its colour. Works best with a plain wall or cloth.',
+        ref: 'Prop the phone so it cannot move. Take one photo of the empty scene, then record yourself without moving the phone.',
+        ai: 'Uses the MediaPipe selfie segmentation model, loaded from the internet. Works best on one person facing the camera.',
+        median: 'For body movement across the picture. You need to move around so every part of the background shows in some frames.'
+      }[m];
+    }
+
+    /* ---------- AI cutout (MediaPipe selfie segmentation) and live camera ---------- */
+    var seg = null, segP = null, segLock = false, stream = null, liveBusy = false, liveRaf = 0, liveVid = document.createElement('video');
+    liveVid.muted = true; liveVid.playsInline = true;
+    function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms) }) }
+    function liveMsg(t, c) { var m = $('liveMsg'); m.className = 'msg' + (c ? ' ' + c : ''); m.textContent = t }
+    function getSeg() {
+      if (segP) return segP;
+      segP = new Promise(function (res, rej) {
+        if (typeof SelfieSegmentation === 'undefined') { rej(new Error('the MediaPipe script did not load, so check your internet connection')); return }
+        var s = new SelfieSegmentation({ locateFile: function (f) { return 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/' + f } });
+        s.setOptions({ modelSelection: 1 });
+        s.initialize().then(function () { seg = s; res(s) }, rej);
+      });
+      segP.catch(function () { segP = null });
+      return segP;
+    }
+    function maskToProb(m, w, h) {
+      var c = flipDraw(m, w, h, false), d = c.getContext('2d').getImageData(0, 0, w, h).data, n = w * h, out = new Float32Array(n), minA = 255, i;
+      for (i = 0; i < n; i++)if (d[i * 4 + 3] < minA) minA = d[i * 4 + 3];
+      var ch = minA < 250 ? 3 : 0;
+      for (i = 0; i < n; i++)out[i] = d[i * 4 + ch] / 255;
+      return out;
+    }
+    function segMask(canvas) {
+      return new Promise(function (resolve, reject) {
+        seg.onResults(function (r) { try { resolve(maskToProb(r.segmentationMask, canvas.width, canvas.height)) } catch (e) { reject(e) } });
+        seg.send({ image: canvas }).catch(reject);
+      });
+    }
+    async function computeMasks(fr, tok) {
+      segLock = true;
+      try {
+        while (liveBusy) await sleep(20);
+        await getSeg();
+        for (var i = 0; i < fr.length; i++) {
+          if (tok !== procTok) return false;
+          var f = fr[i];
+          if (!f._mask || f._maskMirror !== st.mirror) {
+            var wh = workSize(f), base = baseOf(f, wh[0], wh[1]);
+            f._mask = await segMask(base); f._maskMirror = st.mirror;
+          }
+          procMsg('AI cutout ' + (i + 1) + ' of ' + fr.length + '…');
+        }
+        return true;
+      } finally { segLock = false }
+    }
+    async function listDevices() {
+      try {
+        var devs = (await navigator.mediaDevices.enumerateDevices()).filter(function (d) { return d.kind === 'videoinput' }), sel = $('devSel'), cur = sel.value;
+        sel.innerHTML = '<option value="">Choose automatically</option>' + devs.map(function (d, i) { return '<option value="' + d.deviceId + '">' + (d.label || ('Camera ' + (i + 1))).replace(/</g, '') + '</option>' }).join('');
+        sel.value = cur;
+      } catch (e) { }
+    }
+    async function startCam() {
+      stopCam();
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { liveMsg('This page has no camera access. Serve it from localhost or https.', 'err'); return }
+      var w = +$('resSel').value || 1280, dev = $('devSel').value, vc = { width: { ideal: w } };
+      if (dev) vc.deviceId = { exact: dev }; else vc.facingMode = { ideal: $('camSel').value };
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: vc, audio: false });
+        liveVid.srcObject = stream; await liveVid.play(); await listDevices();
+        if (!dev && $('camSel').value === 'user') { st.mirror = true; $('mirror').checked = true; scheduleProcess() }
+        else if (!dev) { st.mirror = false; $('mirror').checked = false; scheduleProcess() }
+        $('camStop').disabled = false; $('snap').disabled = false; $('burst').disabled = false; $('camStart').textContent = 'Restart camera';
+        liveMsg(liveVid.videoWidth + ' × ' + liveVid.videoHeight + ' px', ''); liveLoop();
+      } catch (e) { liveMsg('Could not start the camera: ' + (e.message || e.name) + '.', 'err') }
+    }
+    function stopCam() {
+      cancelAnimationFrame(liveRaf); if (stream) { stream.getTracks().forEach(function (t) { t.stop() }); stream = null }
+      $('camStop').disabled = true; $('snap').disabled = true; $('burst').disabled = true;
+    }
+    function liveLoop() {
+      if (!stream) return;
+      var v = liveVid, w = v.videoWidth, h = v.videoHeight;
+      if (w) {
+        var cv = $('liveC'), s = Math.min(1, 640 / Math.max(w, h)), cw = Math.round(w * s), ch = Math.round(h * s);
+        if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch }
+        var lx = cv.getContext('2d');
+        if ($('liveAI').checked && seg && !segLock) {
+          if (!liveBusy) {
+            liveBusy = true; var tmp = flipDraw(v, cw, ch, st.mirror);
+            seg.onResults(function (r) {
+              try {
+                var p = maskToProb(r.segmentationMask, cw, ch), tx = tmp.getContext('2d'), img = tx.getImageData(0, 0, cw, ch), d = img.data, i;
+                for (i = 0; i < cw * ch; i++) { var q = (p[i] - .3) / .4; q = q < 0 ? 0 : q > 1 ? 1 : q; d[i * 4 + 3] = Math.round(q * 255) }
+                tx.putImageData(img, 0, 0); lx.fillStyle = st.bg; lx.fillRect(0, 0, cw, ch); lx.drawImage(tmp, 0, 0);
+              } finally { liveBusy = false }
+            });
+            seg.send({ image: tmp }).catch(function () { liveBusy = false });
+          }
+        } else if (!liveBusy) {
+          lx.save(); if (st.mirror) { lx.translate(cw, 0); lx.scale(-1, 1) } lx.drawImage(v, 0, 0, cw, ch); lx.restore();
+        }
+      }
+      liveRaf = requestAnimationFrame(liveLoop);
+    }
+    function snapCanvas() { return toCanvas(liveVid, 1280) }
+    function snapOne() {
+      if (!stream) return;
+      var c = snapCanvas();
+      if (pushFrame(c, 'snap ' + (st.frames.length + 1))) { liveMsg(st.frames.length + ' frame' + (st.frames.length > 1 ? 's' : ''), ''); framesChanged() }
+    }
+    async function runBurst() {
+      if (!stream) return;
+      var n = +$('bN').value, iv = +$('bI').value, cd = +$('bC').value, out = [], k, i;
+      $('burst').disabled = true;
+      for (k = cd; k > 0; k--) { liveMsg('Starting in ' + k + '…', ''); await sleep(1000) }
+      for (i = 0; i < n; i++) { out.push({ name: 'burst ' + (i + 1), orig: snapCanvas(), src: null }); out[i].src = out[i].orig; liveMsg('Frame ' + (i + 1) + ' of ' + n, ''); await sleep(iv) }
+      if ($('bRep').checked || st.example) { st.frames = out; st.example = false }
+      else st.frames = st.frames.concat(out).slice(0, 48);
+      liveMsg(n + ' frames captured.', ''); framesChanged();
+      $('burst').disabled = !stream;
+    }
+
+    /* ---------- wiring ---------- */
+    var drop = $('drop'), file = $('file');
+    drop.addEventListener('click', function () { file.click() });
+    drop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click() } });
+    file.addEventListener('change', function () { if (file.files.length) addFiles(file.files); file.value = '' });
+    ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over') }) });
+    ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over') }) });
+    drop.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files) });
+    $('sample').addEventListener('click', function () { st.frames = makeExample(); st.example = true; framesChanged() });
+    $('clear').addEventListener('click', function () { st.frames = []; st.example = false; framesChanged() });
+    $('pp').addEventListener('change', function () { st.pp = this.checked; st.clearTouched = false; framesChanged() });
+    $('paper').addEventListener('change', function () { st.paper = this.value; var c = this.value === 'C'; $('customF').hidden = $('customH').hidden = !c; refresh() });
+    $('cw').addEventListener('input', function () { st.cw = +this.value || 210; refresh() });
+    $('ch').addEventListener('input', function () { st.ch = +this.value || 297; refresh() });
+    $('dpi').addEventListener('change', function () { st.dpi = +this.value; refresh() });
+    $('slice').addEventListener('change', function () { st.slice = this.value; refresh() });
+    $('clr').addEventListener('input', function () { st.clear = +this.value; st.clearTouched = true; refresh() });
+    $('bg').addEventListener('input', function () { st.bg = this.value; refresh() });
+    $('mar').addEventListener('input', function () { st.margin = Math.max(0, +this.value || 0); refresh() });
+    $('bar').addEventListener('change', function () { st.bar = this.checked; refresh() });
+    $('ovOn').addEventListener('change', function () { st.ovOn = this.checked });
+    $('fps').addEventListener('input', function () { st.fps = +this.value; $('fpsO').textContent = st.fps + ' fps'; t0 = performance.now() });
+    $('hand').addEventListener('input', function () { st.hand = +this.value });
+    function radios(name, fn) { Array.prototype.forEach.call(document.getElementsByName(name), function (r) { r.addEventListener('change', function () { if (r.checked) fn(r.value) }) }) }
+    radios('or', function (v) { st.land = v === 'l'; refresh() });
+    radios('st', function (v) { st.vert = v === 'v'; refresh() });
+    radios('fit', function (v) { st.fit = v; refresh() });
+    radios('mo', function (v) { st.mode = v; $('fpsF').hidden = v === 'hand'; $('handF').hidden = v !== 'hand'; t0 = performance.now() });
+    $('dlPrint').addEventListener('click', function () { exportFile('print') });
+    $('dlFilm').addEventListener('click', function () { exportFile('film') });
+    $('recBtn').addEventListener('click', function () { $('vidRec').click() });
+    $('vidBtn').addEventListener('click', function () { $('vidIn').click() });
+    $('photoBtn').addEventListener('click', function () { $('photoIn').click() });
+    $('vidRec').addEventListener('change', function () { if (this.files[0]) loadVideo(this.files[0]); this.value = '' });
+    $('vidIn').addEventListener('change', function () { if (this.files[0]) loadVideo(this.files[0]); this.value = '' });
+    $('photoIn').addEventListener('change', function () {
+      var f = this.files[0]; this.value = ''; if (!f) return;
+      createImageBitmap(f).then(function (b) {
+        var c = toCanvas(b, 1280); if (b.close) b.close();
+        if (pushFrame(c, 'photo ' + (st.frames.length + 1))) { capMsg(st.frames.length + ' frame' + (st.frames.length > 1 ? 's' : '') + '. Tap “Take a photo” again for the next pose.', ''); framesChanged() }
+      }).catch(function () { capMsg('That photo could not be read.', 'err') });
+    });
+    $('refBtn').addEventListener('click', function () { $('refIn').click() });
+    $('refIn').addEventListener('change', function () {
+      var f = this.files[0]; this.value = ''; if (!f) return;
+      createImageBitmap(f).then(function (b) { st.cut.ref = toCanvas(b, 1280); if (b.close) b.close(); $('refNote').textContent = 'Empty scene saved'; scheduleProcess() })
+        .catch(function () { $('refNote').textContent = 'Could not read that photo' });
+    });
+    radios('cam', function (v) { st.cam = v; updateCapture() });
+    $('mirror').addEventListener('change', function () { st.mirror = this.checked; scheduleProcess() });
+    ['tStart', 'tEnd'].forEach(function (id) { $(id).addEventListener('input', function () { updClip(); var v = $('vid'); if (v.readyState > 0) v.currentTime = +this.value }) });
+    $('fc').addEventListener('input', updClip);
+    $('extract').addEventListener('click', extractFrames);
+    $('cmeth').addEventListener('change', function () { st.cut.method = this.value; if (this.value !== 'off') { st.cut.tol = this.value === 'key' ? 16 : 8; $('tol').value = st.cut.tol } syncCut(); scheduleProcess() });
+    $('tol').addEventListener('input', function () { st.cut.tol = +this.value; syncCut(); scheduleProcess() });
+    $('smo').addEventListener('input', function () { st.cut.smooth = +this.value; syncCut(); scheduleProcess() });
+    $('grow').addEventListener('input', function () { st.cut.grow = +this.value; syncCut(); scheduleProcess() });
+    $('lg').addEventListener('change', function () { st.cut.largest = this.checked; scheduleProcess() });
+    $('fh').addEventListener('change', function () { st.cut.holes = this.checked; scheduleProcess() });
+    $('look').addEventListener('change', function () { st.cut.look = this.value; syncCut(); scheduleProcess() });
+    $('thr').addEventListener('input', function () { st.cut.thr = +this.value; syncCut(); scheduleProcess() });
+    $('sil').addEventListener('input', function () { st.cut.sil = this.value; scheduleProcess() });
+    $('cvF').addEventListener('input', drawCut);
+    $('cvO').addEventListener('click', function (e) {
+      var cv = $('cvO'), r = cv.getBoundingClientRect(), x = Math.round((e.clientX - r.left) * cv.width / r.width), y = Math.round((e.clientY - r.top) * cv.height / r.height);
+      var d = cv.getContext('2d').getImageData(Math.max(0, x - 2), Math.max(0, y - 2), 5, 5).data, s = [0, 0, 0], k, cnt = d.length / 4;
+      for (k = 0; k < d.length; k += 4) { s[0] += d[k]; s[1] += d[k + 1]; s[2] += d[k + 2] }
+      st.cut.key = [Math.round(s[0] / cnt), Math.round(s[1] / cnt), Math.round(s[2] / cnt)];
+      $('keySw').style.background = 'rgb(' + st.cut.key.join(',') + ')';
+      if (st.cut.method !== 'key') { st.cut.method = 'key'; $('cmeth').value = 'key' }
+      syncCut(); scheduleProcess();
+    });
+    updateCapture(); syncCut();
+    $('camStart').addEventListener('click', startCam);
+    $('camStop').addEventListener('click', function () { stopCam(); liveMsg('Camera stopped.', '') });
+    $('snap').addEventListener('click', snapOne);
+    $('burst').addEventListener('click', runBurst);
+    $('camSel').addEventListener('change', function () { $('devSel').value = ''; if (stream) startCam() });
+    $('devSel').addEventListener('change', function () { if (stream) startCam() });
+    $('bN').addEventListener('input', function () { $('bNO').textContent = this.value });
+    $('bI').addEventListener('input', function () { $('bIO').textContent = this.value + ' ms' });
+    $('bC').addEventListener('input', function () { $('bCO').textContent = this.value + ' s' });
+    $('liveAI').addEventListener('change', function () {
+      st.cut.method = this.checked ? 'ai' : 'off'; $('cmeth').value = st.cut.method;
+      if (this.checked) { getSeg().catch(function (e) { liveMsg('AI cutout could not start: ' + (e.message || e), 'err') }) }
+      syncCut(); scheduleProcess();
+    });
+    $('cmeth').addEventListener('change', function () { $('liveAI').checked = this.value === 'ai'; if (this.value === 'ai') getSeg().catch(function (e) { procMsg('AI cutout could not start: ' + (e.message || e), 'err') }) });
+    var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(refresh, 150) });
+
+    if (reduce) { document.getElementsByName('mo')[2].checked = true; $('fpsF').hidden = true; $('handF').hidden = false }
+    st.frames = makeExample(); st.example = true; framesChanged();
+    requestAnimationFrame(frame);
+  })();
+</script>
