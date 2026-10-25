@@ -717,11 +717,11 @@
               <option value="300">300 dpi (smaller file)</option>
             </select>
           </div>
-          <div class="f"><label for="slice">Slice width</label>
-            <select id="slice">
-              <option value="fine">Fine · 0.21 mm</option>
-              <option value="std" selected>Standard · 0.42 mm</option>
-              <option value="coarse">Coarse · 0.85 mm</option>
+          <div class="f"><label for="pitch">Stripe pitch</label>
+            <select id="pitch">
+              <option value="2.54">Fine · 2.54 mm</option>
+              <option value="5.08" selected>Standard · 5.08 mm</option>
+              <option value="10.16">Coarse · 10.16 mm (hand-slide)</option>
             </select>
           </div>
           <div class="f"><span class="lbl">Stripe direction</span>
@@ -733,9 +733,10 @@
                   type="radio" name="fit" value="cover">Fill</label></div>
           </div>
           <div class="f full"><label for="clr">Slit width <output id="clrO"></output></label><input id="clr"
-              type="range" min="1" max="11" value="4">
-            <span class="note">Narrow slits give a sharp but darker picture. Wide slits are brighter but
-              blurrier.</span>
+              type="range" min="15" max="60" value="33">
+            <span class="note">A third of the pitch (33%) is the standard. Narrow slits are sharper but darker, wide
+              slits are brighter but blurrier. The stripe film depends only on the pitch and slit, so one film works
+              with any number of frames.</span>
           </div>
           <div class="f"><label for="bg">Background</label><input id="bg" type="color" value="#ffffff"></div>
           <div class="f"><label for="mar">Margin mm</label><input id="mar" type="number" min="0" max="60" value="8">
@@ -798,8 +799,8 @@
     var $ = function (i) { return document.getElementById(i) };
     var PAPER = { A4: [210, 297], A3: [297, 420], A5: [148, 210], L: [215.9, 279.4] };
     var st = {
-      frames: [], pp: false, paper: 'A4', cw: 210, ch: 297, land: false, dpi: 600, slice: 'std', vert: false, fit: 'contain',
-      clear: 4, clearTouched: false, cam: 'user', mirror: false, medCache: null,
+      frames: [], pp: false, paper: 'A4', cw: 210, ch: 297, land: false, dpi: 600, vert: false, fit: 'contain',
+      pitch: 5.08, slit: 33, cam: 'user', mirror: false, medCache: null,
       cut: { method: 'off', key: null, ref: null, tol: 16, smooth: 2, grow: 0, largest: true, holes: true, look: 'photo', thr: 120, sil: '#111111' }, bg: '#ffffff', margin: 8, bar: true, mode: 'motor', fps: 8, hand: 0, ovOn: true, example: false
     };
     var S = Math.max(1, Math.min(3, Math.round(window.devicePixelRatio || 1)));
@@ -838,9 +839,6 @@
     }
     function framesChanged() {
       var n = effN();
-      var cl = $('clr'); cl.max = Math.max(1, n - 1);
-      if (!st.clearTouched || st.clear > n - 1) st.clear = Math.max(1, Math.min(n - 1, Math.round(n / 3)));
-      cl.value = st.clear;
       renderStrip(); refresh(); drawCut(); scheduleProcess();
     }
     function effN() { var n = frameCount(); return n < 2 ? n : (st.pp ? Math.max(2, 2 * n - 2) : n) }
@@ -872,22 +870,23 @@
     }
 
     /* ---------- geometry ---------- */
+    function mkBounds(P, N) { var b = [], i; for (i = 0; i <= N; i++)b.push(Math.round(i * P / N)); return b }
     function geom() {
       var n = frameCount(); if (n < 2) return null;
       var seq = [], i; for (i = 0; i < n; i++)seq.push(i);
       if (st.pp) for (i = n - 2; i >= 1; i--)seq.push(i);
-      var N = seq.length, base = { fine: 5, std: 10, coarse: 20 }[st.slice];
-      var u = Math.max(1, Math.round(base * st.dpi / 600)), pitch = N * u, mmPx = st.dpi / 25.4;
+      var N = seq.length, mmPx = st.dpi / 25.4, P = Math.max(2, Math.round(st.pitch * mmPx));
+      var clearPx = Math.max(1, Math.min(P - 1, Math.round(P * st.slit / 100)));
       var pw, ph; if (st.paper === 'C') { pw = st.cw; ph = st.ch } else { pw = PAPER[st.paper][0]; ph = PAPER[st.paper][1] }
       if (pw > ph) { var t = pw; pw = ph; ph = t }
       if (st.land) { var t2 = pw; pw = ph; ph = t2 }
       var pxW = Math.round(pw * mmPx), pxH = Math.round(ph * mmPx), sheetW = pxW, sheetH = pxH;
-      if (st.vert) sheetW = Math.floor(pxW / pitch) * pitch; else sheetH = Math.floor(pxH / pitch) * pitch;
-      var m = Math.max(1, Math.ceil(st.margin * mmPx / pitch)) * pitch;
+      if (st.vert) sheetW = Math.floor(pxW / P) * P; else sheetH = Math.floor(pxH / P) * P;
+      var m = Math.max(1, Math.ceil(st.margin * mmPx / P)) * P;
       var iw = sheetW - 2 * m, ih = sheetH - 2 * m;
       return {
-        n: n, seq: seq, N: N, u: u, pitch: pitch, mmPx: mmPx, sheetW: sheetW, sheetH: sheetH, m: m, iw: iw, ih: ih, vert: st.vert,
-        clear: Math.min(st.clear, N - 1), pw: pw, ph: ph, ok: iw >= pitch * 2 && ih >= pitch * 2 && sheetW > 0 && sheetH > 0, mp: sheetW * sheetH / 1e6
+        n: n, seq: seq, N: N, P: P, clearPx: clearPx, bounds: mkBounds(P, N), mmPx: mmPx, sheetW: sheetW, sheetH: sheetH, m: m, iw: iw, ih: ih, vert: st.vert,
+        pw: pw, ph: ph, ok: iw >= P * 2 && ih >= P * 2 && sheetW > 0 && sheetH > 0, mp: sheetW * sheetH / 1e6
       };
     }
 
@@ -897,26 +896,28 @@
       var w = sw * s, h = sh * s; t.imageSmoothingEnabled = true; t.imageSmoothingQuality = 'high';
       t.drawImage(src, (iw - w) / 2, (ih - h) / 2, w, h);
     }
-    function interlace(out, ox, oy, iw, ih, u, g) {
+    function interlace(out, ox, oy, iw, ih, g) {
       var tmp = document.createElement('canvas'); tmp.width = iw; tmp.height = ih;
-      var t = tmp.getContext('2d'), total = (g.vert ? iw : ih) / u, f, r;
+      var t = tmp.getContext('2d'), periods = Math.floor((g.vert ? iw : ih) / g.P), f, k, s0, sw;
       for (f = 0; f < g.N; f++) {
+        sw = g.bounds[f + 1] - g.bounds[f]; if (sw <= 0) continue;
         t.fillStyle = st.bg; t.fillRect(0, 0, iw, ih);
         drawFit(t, st.frames[g.seq[f]].src, iw, ih);
-        for (r = f; r < total; r += g.N) {
-          if (g.vert) out.drawImage(tmp, r * u, 0, u, ih, ox + r * u, oy, u, ih);
-          else out.drawImage(tmp, 0, r * u, iw, u, ox, oy + r * u, iw, u);
+        for (k = 0; k < periods; k++) {
+          s0 = k * g.P + g.bounds[f];
+          if (g.vert) out.drawImage(tmp, s0, 0, sw, ih, ox + s0, oy, sw, ih);
+          else out.drawImage(tmp, 0, s0, iw, sw, ox, oy + s0, iw, sw);
         }
       }
     }
-    function stripes(ctx, W, H, u, N, clear, off, vert, color) {
-      ctx.fillStyle = color; var pitch = N * u, p = off * u + clear * u - pitch;
-      if (!vert) { for (; p < H; p += pitch)ctx.fillRect(0, p, W, (N - clear) * u) }
-      else { for (; p < W; p += pitch)ctx.fillRect(p, 0, (N - clear) * u, H) }
+    function stripes(ctx, W, H, P, clearPx, offPx, vert, color) {
+      ctx.fillStyle = color; var p = offPx + clearPx - P;
+      if (!vert) { for (; p < H; p += P)ctx.fillRect(0, p, W, P - clearPx) }
+      else { for (; p < W; p += P)ctx.fillRect(p, 0, P - clearPx, H) }
     }
     function bar(ctx, g, color) {
       if (!st.bar) return false;
-      var len = Math.round(100 * g.mmPx), cp = g.clear * g.u, bh = Math.max(2, Math.round(cp * .4)), o = Math.round((cp - bh) / 2);
+      var len = Math.round(100 * g.mmPx), cp = g.clearPx, bh = Math.max(2, Math.round(cp * .4)), o = Math.round((cp - bh) / 2);
       ctx.fillStyle = color;
       if (!g.vert) { if (g.m + len > g.sheetW - g.m) return false; ctx.fillRect(g.m, o, len, bh) }
       else { if (g.m + len > g.sheetH - g.m) return false; ctx.fillRect(o, g.m, bh, len) }
@@ -934,15 +935,15 @@
       var avail = Math.max(200, Math.min(440, $('win').parentNode.clientWidth - 32 || 440));
       var a = g.iw / g.ih, w, h;
       if (a <= 1) { h = avail; w = avail * a } else { w = avail; h = avail / a }
-      var wU, hU;
-      if (g.vert) { wU = g.N * Math.max(1, Math.round(w / g.N)); hU = Math.round(h) }
-      else { hU = g.N * Math.max(1, Math.round(h / g.N)); wU = Math.round(w) }
-      win.style.width = wU + 'px'; win.style.height = hU + 'px';
-      pc.width = oc.width = wU * S; pc.height = oc.height = hU * S;
-      var x = pc.getContext('2d'); x.fillStyle = st.bg; x.fillRect(0, 0, pc.width, pc.height);
-      var g2 = { N: g.N, seq: g.seq, vert: g.vert };
-      interlace(x, 0, 0, wU * S, hU * S, S, g2);
-      pv = { wU: wU, hU: hU };
+      var N = g.N, Pp = N * Math.ceil(12 / N) * S, wPx, hPx;
+      if (g.vert) { wPx = Pp * Math.max(1, Math.round(w * S / Pp)); hPx = Math.round(h * S) }
+      else { hPx = Pp * Math.max(1, Math.round(h * S / Pp)); wPx = Math.round(w * S) }
+      win.style.width = (wPx / S) + 'px'; win.style.height = (hPx / S) + 'px';
+      pc.width = oc.width = wPx; pc.height = oc.height = hPx;
+      var x = pc.getContext('2d'); x.fillStyle = st.bg; x.fillRect(0, 0, wPx, hPx);
+      var gp = { N: N, seq: g.seq, vert: g.vert, P: Pp, bounds: mkBounds(Pp, N), clearPx: Math.max(1, Math.min(Pp - 1, Math.round(Pp * st.slit / 100))) };
+      interlace(x, 0, 0, wPx, hPx, gp);
+      pv = { wPx: wPx, hPx: hPx, gp: gp };
     }
     function offsetNow(t) {
       var N = pg.N;
@@ -955,12 +956,12 @@
     if (reduce) st.mode = 'hand';
     function frame(now) {
       if (pg && pg.ok && pv) {
-        var off = offsetNow(now - t0);
+        var off = offsetNow(now - t0), gp = pv.gp, offPx = off / pg.N * gp.P;
         var ctx = oc.getContext('2d'); ctx.clearRect(0, 0, oc.width, oc.height);
-        if (st.ovOn) stripes(ctx, oc.width, oc.height, S, pg.N, pg.clear, off, pg.vert, 'rgba(5,7,12,.95)');
-        var a = Math.floor(off) % pg.N, b = (a + pg.clear - 1) % pg.N;
-        var fa = pg.seq[a], fb = pg.seq[b];
-        $('capR').textContent = st.ovOn ? ('frames ' + (fa + 1) + (pg.clear > 1 ? '–' + (fb + 1) : '') + ' of ' + pg.n) : 'raw print';
+        if (st.ovOn) stripes(ctx, oc.width, oc.height, gp.P, gp.clearPx, offPx, pg.vert, 'rgba(5,7,12,.95)');
+        var sw = gp.P / pg.N, a = Math.floor(offPx / sw), b = Math.floor((offPx + gp.clearPx - 1e-6) / sw);
+        var fa = pg.seq[a % pg.N], fb = pg.seq[b % pg.N];
+        $('capR').textContent = st.ovOn ? ('frames ' + (fa + 1) + (b > a ? '–' + (fb + 1) : '') + ' of ' + pg.n) : 'raw print';
         if (st.mode === 'hand') $('handO').textContent = off.toFixed(1) + ' / ' + pg.N;
       }
       requestAnimationFrame(frame);
@@ -971,22 +972,23 @@
     function refresh() {
       buildPreview();
       var g = pg, spec = $('spec'), ok = g && g.ok;
-      $('clrO').textContent = g ? (g.clear + ' of ' + g.N + ' slices open') : '';
+      $('clrO').textContent = g ? (st.slit + '% · ' + (g.clearPx / g.mmPx).toFixed(2) + ' mm') : '';
       $('fpsO').textContent = st.fps + ' fps';
       $('dlPrint').disabled = !ok || busy; $('dlFilm').disabled = !ok || busy;
       var m = $('msg'); m.className = 'msg'; m.textContent = '';
       if (!g) { spec.innerHTML = ''; $('capL').textContent = 'Add at least two frames'; $('capR').textContent = ''; return }
-      if (!g.ok) { spec.innerHTML = ''; msg('The paper is too small for these settings. Use a larger paper, a thinner slice, or fewer frames.', 'err'); $('capL').textContent = ''; return }
+      if (!g.ok) { spec.innerHTML = ''; msg('The paper is too small for these settings. Use a larger paper, a finer stripe pitch, or fewer frames.', 'err'); $('capL').textContent = ''; return }
       $('capL').textContent = g.N + ' frames · ' + (g.vert ? 'vertical' : 'horizontal') + ' stripes';
       var rows = [['Sheet', g.pw.toFixed(0) + ' × ' + g.ph.toFixed(0) + ' mm (' + g.sheetW + ' × ' + g.sheetH + ' px)'],
       ['Picture area', mm(g.iw, g) + 0 > 0 ? mm(g.iw, g).toFixed(0) + ' × ' + mm(g.ih, g).toFixed(0) + ' mm' : ''],
-      ['Slice', mm(g.u, g).toFixed(3) + ' mm (' + g.u + ' px)'],
-      ['Stripe pitch', mm(g.pitch, g).toFixed(2) + ' mm = film travel'],
-      ['Open slit / solid', mm(g.clear * g.u, g).toFixed(2) + ' / ' + mm((g.N - g.clear) * g.u, g).toFixed(2) + ' mm'],
-      ['Check', '20 pitches = ' + (20 * mm(g.pitch, g)).toFixed(1) + ' mm'],
+      ['Slice (average)', (g.P / g.N / g.mmPx).toFixed(3) + ' mm (' + (g.P / g.N).toFixed(1) + ' px)'],
+      ['Stripe pitch', mm(g.P, g).toFixed(2) + ' mm = film travel'],
+      ['Open slit / solid', mm(g.clearPx, g).toFixed(2) + ' / ' + mm(g.P - g.clearPx, g).toFixed(2) + ' mm'],
+      ['Check', '20 pitches = ' + (20 * mm(g.P, g)).toFixed(1) + ' mm'],
       ['File size', 'about ' + g.mp.toFixed(0) + ' megapixels each']];
       spec.innerHTML = rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>' }).join('');
-      if (g.mp > 150) { msg('This is a very large image. If the download fails, choose 300 dpi or a smaller paper.', 'warn') }
+      if (g.P / g.N < 3) { msg('Each slice is only ' + (g.P / g.N).toFixed(1) + ' px wide. Choose a coarser stripe pitch, 600 dpi, or fewer frames.', 'warn') }
+      else if (g.mp > 150) { msg('This is a very large image. If the download fails, choose 300 dpi or a smaller paper.', 'warn') }
       else if (st.bar && !bar(document.createElement('canvas').getContext('2d'), g, '#000')) { msg('The paper is too small for the 100 mm scale bar, so it will be left out.', 'warn') }
     }
     function msg(t, c) { var m = $('msg'); m.className = 'msg' + (c ? ' ' + c : ''); m.textContent = t }
@@ -1025,8 +1027,8 @@
           c = document.createElement('canvas'); c.width = g.sheetW; c.height = g.sheetH;
           var x = c.getContext('2d'); if (!x) throw new Error('canvas');
           x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
-          if (kind === 'print') { interlace(x, g.m, g.m, g.iw, g.ih, g.u, g); bar(x, g, '#000') }
-          else { stripes(x, c.width, c.height, g.u, g.N, g.clear, 0, g.vert, '#000'); bar(x, g, '#000') }
+          if (kind === 'print') { interlace(x, g.m, g.m, g.iw, g.ih, g); bar(x, g, '#000') }
+          else { stripes(x, c.width, c.height, g.P, g.clearPx, 0, g.vert, '#000'); bar(x, g, '#000') }
         } catch (e) { busy = false; refresh(); msg('This device could not make an image that large. Choose 300 dpi or a smaller paper.', 'err'); return }
         c.toBlob(function (b) {
           if (!b) { busy = false; refresh(); msg('This device could not make an image that large. Choose 300 dpi or a smaller paper.', 'err'); return }
@@ -1403,13 +1405,13 @@
     drop.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files) });
     $('sample').addEventListener('click', function () { st.frames = makeExample(); st.example = true; framesChanged() });
     $('clear').addEventListener('click', function () { st.frames = []; st.example = false; framesChanged() });
-    $('pp').addEventListener('change', function () { st.pp = this.checked; st.clearTouched = false; framesChanged() });
+    $('pp').addEventListener('change', function () { st.pp = this.checked; framesChanged() });
     $('paper').addEventListener('change', function () { st.paper = this.value; var c = this.value === 'C'; $('customF').hidden = $('customH').hidden = !c; refresh() });
     $('cw').addEventListener('input', function () { st.cw = +this.value || 210; refresh() });
     $('ch').addEventListener('input', function () { st.ch = +this.value || 297; refresh() });
     $('dpi').addEventListener('change', function () { st.dpi = +this.value; refresh() });
-    $('slice').addEventListener('change', function () { st.slice = this.value; refresh() });
-    $('clr').addEventListener('input', function () { st.clear = +this.value; st.clearTouched = true; refresh() });
+    $('pitch').addEventListener('change', function () { st.pitch = +this.value; refresh() });
+    $('clr').addEventListener('input', function () { st.slit = +this.value; refresh() });
     $('bg').addEventListener('input', function () { st.bg = this.value; refresh() });
     $('mar').addEventListener('input', function () { st.margin = Math.max(0, +this.value || 0); refresh() });
     $('bar').addEventListener('change', function () { st.bar = this.checked; refresh() });
